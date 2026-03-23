@@ -158,9 +158,10 @@ def simulate_adaptation(gpr_model, ref_fluxes, nutrients, extra_constraints={}, 
     constraints.update(extra_constraints)
     gpr_constraints = gpr_conversion(constraints)
     p_solution = reframed.cobra.simulation.lMOMA(gpr_model,
-                                              reference=ref_fluxes,
+                                              reference={rxn: ref_fluxes[rxn] for rxn in gpr_model.u_reactions},
                                               constraints=gpr_constraints,
                                               reactions=gpr_model.u_reactions)
+    p_reference = {rxn: p_solution.values[rxn] for rxn in gpr_model.u_reactions}
     ut_gpr_rxns = (
         gpr_reactions(nutrients, excludes=['_f', '_b']),
         gpr_reactions(nutrients, includes=['_f']),
@@ -177,7 +178,7 @@ def simulate_adaptation(gpr_model, ref_fluxes, nutrients, extra_constraints={}, 
     def growth_solution(growth):
         return reframed.cobra.simulation.lMOMA(
             gpr_model,
-            reference=p_solution.values,
+            reference=p_reference,
             constraints=gpr_constraints | {r_biomass: (growth, growth)},
             reactions=gpr_model.u_reactions
         )
