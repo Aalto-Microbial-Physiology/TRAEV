@@ -157,43 +157,61 @@ def simulate_adaptation(gpr_model, ref_fluxes, nutrients, extra_constraints={}, 
     constraints.update({r_biomass: (user_p_growth or MIN_GROWTH, ref_fluxes[r_biomass])})
     constraints.update(extra_constraints)
     gpr_constraints = gpr_conversion(constraints)
-    p_solution = reframed.cobra.simulation.lMOMA(gpr_model, 
-                                              reference=ref_fluxes, 
-                                              constraints=gpr_constraints, 
+    p_solution = reframed.cobra.simulation.lMOMA(gpr_model,
+                                              reference=ref_fluxes,
+                                              constraints=gpr_constraints,
                                               reactions=gpr_model.u_reactions)
-    a_growth = user_a_growth or MAX_GROWTH
-    min_obj = float('inf')
+    ut_gpr_rxns = (
+        gpr_reactions(nutrients, excludes=['_f', '_b']),
+        gpr_reactions(nutrients, includes=['_f']),
+        gpr_reactions(nutrients, includes=['_b'])
+    )
+
+    def calc_proxy_fitness(solution):
+        fluxes = pd.Series(solution.values)
+        uptake = -sum_flux(fluxes, ut_gpr_rxns)
+        if uptake <= 0:
+            return -float('inf')
+        return fluxes[r_biomass] / uptake
+
+    def growth_solution(growth):
+        return reframed.cobra.simulation.lMOMA(
+            gpr_model,
+            reference=p_solution.values,
+            constraints=gpr_constraints | {r_biomass: (growth, growth)},
+            reactions=gpr_model.u_reactions
+        )
+
+    p_growth = p_solution.values[r_biomass]
+    max_growth = user_a_growth or MAX_GROWTH
+    a_solution = p_solution
+    best_pf = calc_proxy_fitness(p_solution)
+    best_growth = p_growth
+
     step = 0.05
-    for growth in np.arange(np.floor(a_growth / step) * step, np.ceil(p_solution.values[r_biomass] / step) * step - 1E-9, -step):
-        solution = SWITCHX(gpr_model,
-                        reference=ref_fluxes,
-                        reactions=gpr_model.u_reactions,
-                        constraints=gpr_constraints | {r_biomass:(growth, growth)},
-                        uptake_objective={rxn: 1 for rxn in gpr_reactions(nutrients, includes=['_b'])},
-                        delta=1E-2,
-                        epsilon=1E-4)
-        if solution.fobj < min_obj and solution.fobj >= 0.5:
-            min_obj = solution.fobj
-            a_growth = solution.values[r_biomass]
-        else:
-            break
-    for growth in np.arange(a_growth, a_growth - 0.1 - 1E-9, -0.01):
-        solution = SWITCHX(gpr_model,
-                        reference=ref_fluxes,
-                        reactions=gpr_model.u_reactions,
-                        constraints=gpr_constraints | {r_biomass:(growth, growth)},
-                        uptake_objective={rxn: 1 for rxn in gpr_reactions(nutrients, includes=['_b'])},
-                        delta=1E-2,
-                        epsilon=1E-4)
-        if solution.fobj < min_obj and solution.fobj >= 0.5:
-            min_obj = solution.fobj
-            a_growth = solution.values[r_biomass]
-    a_solution = SWITCHX(gpr_model,
-                        reference=ref_fluxes,
-                        reactions=gpr_model.u_reactions,
-                        constraints=gpr_constraints | {r_biomass:(a_growth, a_growth)},
-                        uptake_objective={rxn: 1 for rxn in gpr_reactions(nutrients, includes=['_b'])},
-                        delta=1E-2,
-                        epsilon=1E-4)
-    fva_df = pd.DataFrame({'r_flux': ref_fluxes, 'p_flux': p_solution.values, 'a_flux': a_solution.values})
+    start_growth = np.ceil(p_growth / step) * step
+    for growth in np.arange(start_growth, max_growth + 1E-9, step):
+        solution = growth_solution(growth)
+        pf = calc_proxy_fitness(solution)
+        if pf > best_pf + 1E-12:
+            best_pf = pf
+            best_growth = solution.values[r_biomass]
+            a_solution = solution
+
+    fine_start = max(p_growth, best_growth - step)
+    fine_end = min(max_growth, best_growth + step)
+    for growth in np.arange(fine_start, fine_end + 1E-9, 0.01):
+        solution = growth_solution(growth)
+        pf = calc_proxy_fitness(solution)
+        if pf > best_pf + 1E-12:
+            best_pf = pf
+            best_growth = solution.values[r_biomass]
+            a_solution = solution
+
+    reaction_ids = list(gpr_model.reactions.keys())
+    fva_df = pd.DataFrame({
+        'r_flux': pd.Series(ref_fluxes).reindex(reaction_ids),
+        'p_flux': pd.Series(p_solution.values).reindex(reaction_ids),
+        'a_flux': pd.Series(a_solution.values).reindex(reaction_ids)
+    })
     return fva_df
