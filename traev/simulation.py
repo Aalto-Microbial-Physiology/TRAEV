@@ -176,17 +176,28 @@ def simulate_adaptation(gpr_model, ref_fluxes, nutrients, extra_constraints={}, 
         return fluxes[r_biomass] / uptake
 
     def growth_solution(growth):
-        return reframed.cobra.simulation.lMOMA(
+        return reframed.cobra.simulation.ROOM(
             gpr_model,
             reference=p_reference,
             constraints=gpr_constraints | {r_biomass: (growth, growth)},
-            reactions=gpr_model.u_reactions
+            reactions=gpr_model.u_reactions,
+            delta=3E-3,
+            epsilon=1E-4,
         )
 
     p_growth = p_solution.values[r_biomass]
     max_growth = user_a_growth or MAX_GROWTH
+    uptake_obj_rxns = gpr_reactions(nutrients, includes=['_b'])
+    optimal_solution = FBA(
+        gpr_model,
+        objective={rxn: 1 for rxn in uptake_obj_rxns},
+        minimize=True,
+        constraints=gpr_constraints | {r_biomass: (max_growth, max_growth)},
+    )
+    optimal_pf = calc_proxy_fitness(optimal_solution)
     a_solution = p_solution
     best_pf = calc_proxy_fitness(p_solution)
+    best_pf_gap = abs(best_pf - optimal_pf)
     best_growth = p_growth
 
     step = 0.05
@@ -194,7 +205,9 @@ def simulate_adaptation(gpr_model, ref_fluxes, nutrients, extra_constraints={}, 
     for growth in np.arange(start_growth, max_growth + 1E-9, step):
         solution = growth_solution(growth)
         pf = calc_proxy_fitness(solution)
-        if pf > best_pf + 1E-12:
+        pf_gap = abs(pf - optimal_pf)
+        if pf_gap < best_pf_gap - 1E-12 or (abs(pf_gap - best_pf_gap) <= 1E-12 and pf > best_pf + 1E-12):
+            best_pf_gap = pf_gap
             best_pf = pf
             best_growth = solution.values[r_biomass]
             a_solution = solution
@@ -204,15 +217,16 @@ def simulate_adaptation(gpr_model, ref_fluxes, nutrients, extra_constraints={}, 
     for growth in np.arange(fine_start, fine_end + 1E-9, 0.01):
         solution = growth_solution(growth)
         pf = calc_proxy_fitness(solution)
-        if pf > best_pf + 1E-12:
+        pf_gap = abs(pf - optimal_pf)
+        if pf_gap < best_pf_gap - 1E-12 or (abs(pf_gap - best_pf_gap) <= 1E-12 and pf > best_pf + 1E-12):
+            best_pf_gap = pf_gap
             best_pf = pf
             best_growth = solution.values[r_biomass]
             a_solution = solution
 
-    reaction_ids = list(gpr_model.reactions.keys())
     fva_df = pd.DataFrame({
-        'r_flux': pd.Series(ref_fluxes).reindex(reaction_ids),
-        'p_flux': pd.Series(p_solution.values).reindex(reaction_ids),
-        'a_flux': pd.Series(a_solution.values).reindex(reaction_ids)
+        'r_flux': pd.Series(ref_fluxes).reindex(a_solution.values.keys()),
+        'p_flux': pd.Series(p_solution.values).reindex(a_solution.values.keys()),
+        'a_flux': pd.Series(a_solution.values)
     })
     return fva_df
