@@ -64,8 +64,8 @@ def robustness_analysis(gpr_model, fva_df, nutrients, desired_trait, extra_const
             if solution.status == Status.OPTIMAL or solution.status == Status.SUBOPTIMAL:
                 pf = solution.values[r_biomass] / -sum_flux(solution.to_dataframe()['value'], ut_gpr_rxns)
                 dt = sum_flux(solution.to_dataframe()['value'], dt_gpr_rxns) / -sum_flux(solution.to_dataframe()['value'], ut_gpr_rxns)
-                if fva_df.loc['proxy_fitness', 'p_flux'] < pf <= fva_df.loc['proxy_fitness', 'a_flux'] and 0 < dt <= fva_df.loc['desired_trait', 'p_flux']:
-                    results.append([mutation, 1, pf, dt])
+                if 0.95*fva_df.loc['proxy_fitness', 'p_flux'] < pf < 1.05*fva_df.loc['proxy_fitness', 'a_flux']:
+                    results.append([mutation, 1, pf, min(dt, fva_df.loc['desired_trait', 'p_flux'])])
                     accepted_mutations.append((mutation,))
         
         if len(accepted_mutations) > 0:
@@ -85,8 +85,8 @@ def robustness_analysis(gpr_model, fva_df, nutrients, desired_trait, extra_const
                     if solution.status == Status.OPTIMAL or solution.status == Status.SUBOPTIMAL:
                         pf = solution.values[r_biomass] / -sum_flux(solution.to_dataframe()['value'], ut_gpr_rxns)
                         dt = sum_flux(solution.to_dataframe()['value'], dt_gpr_rxns) / -sum_flux(solution.to_dataframe()['value'], ut_gpr_rxns)
-                        if fva_df.loc['proxy_fitness', 'p_flux'] < pf <= fva_df.loc['proxy_fitness', 'a_flux'] and 0 < dt <= fva_df.loc['desired_trait', 'p_flux']:
-                            results.append([mutation, len(mutation), pf, dt])
+                        if 0.95*fva_df.loc['proxy_fitness', 'p_flux'] < pf < 1.05*fva_df.loc['proxy_fitness', 'a_flux']:
+                            results.append([mutation, len(mutation), pf, min(dt, fva_df.loc['desired_trait', 'p_flux'])])
                             next_accepted_mutations.append(mutation)
                             s_count += 1
                 if len(next_accepted_mutations) == 0:

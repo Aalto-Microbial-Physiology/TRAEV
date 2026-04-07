@@ -88,6 +88,11 @@ def simulate_ale_strain(gpr_model, nutrients, target_growth, extra_constraints={
                                               objective={rxn: 1 for rxn in obj_rxns},
                                               minimize=True,
                                               constraints=gpr_constraints)
+    if solution.status not in (Status.OPTIMAL, Status.SUBOPTIMAL) or solution.values is None:
+        solution = reframed.cobra.simulation.FBA(gpr_model,
+                                                 objective={rxn: 1 for rxn in obj_rxns},
+                                                 minimize=True,
+                                                 constraints=gpr_constraints)
     if ref_fluxes:
         gpr_constraints.update({rxn: (solution.to_dataframe().loc[rxn, 'value'], MAX_FLUX) for rxn in obj_rxns})
         solution = SWITCHX(gpr_model,
@@ -122,10 +127,15 @@ def simulate_engineered_strain(gpr_model, medium, carbon_source, target_growth, 
     constraints.update(extra_constraints)
     gpr_constraints = gpr_conversion(constraints)
     obj_rxns = gpr_reactions(products, includes=['_f']) + gpr_reactions(products, excludes=['_f', '_b'])
-    solution = reframed.cobra.simulation.pFBA(gpr_model, 
-                                                  objective={rxn: 1 for rxn in obj_rxns}, 
-                                                  minimize=False, 
-                                                  constraints=gpr_constraints)
+    solution = reframed.cobra.simulation.pFBA(gpr_model,
+                                              objective={rxn: 1 for rxn in obj_rxns},
+                                              minimize=False,
+                                              constraints=gpr_constraints)
+    if solution.status not in (Status.OPTIMAL, Status.SUBOPTIMAL) or solution.values is None:
+        solution = reframed.cobra.simulation.FBA(gpr_model,
+                                                 objective={rxn: 1 for rxn in obj_rxns},
+                                                 minimize=False,
+                                                 constraints=gpr_constraints)
     if ref_fluxes:
         gpr_constraints.update({rxn: (solution.to_dataframe().loc[rxn, 'value'], MAX_FLUX) for rxn in obj_rxns})
         solution = SWITCHX(gpr_model, 
@@ -181,7 +191,7 @@ def simulate_adaptation(gpr_model, ref_fluxes, nutrients, extra_constraints={}, 
             reference=p_reference,
             constraints=gpr_constraints | {r_biomass: (growth, growth)},
             reactions=gpr_model.u_reactions,
-            delta=3E-3,
+            delta=1E-2,
             epsilon=1E-4,
         )
 
@@ -195,34 +205,50 @@ def simulate_adaptation(gpr_model, ref_fluxes, nutrients, extra_constraints={}, 
         constraints=gpr_constraints | {r_biomass: (max_growth, max_growth)},
     )
     optimal_pf = calc_proxy_fitness(optimal_solution)
+    stop_pf = 0.95*optimal_pf
     a_solution = p_solution
     best_pf = calc_proxy_fitness(p_solution)
     best_pf_gap = abs(best_pf - optimal_pf)
     best_growth = p_growth
+    print(f"simulate_adaptation: start p_growth={p_growth:.4f}, p_pf={best_pf:.6f}, optimal_pf={optimal_pf:.6f}, stop_pf={stop_pf:.6f}")
 
     step = 0.05
     start_growth = np.ceil(p_growth / step) * step
+    hit_growth = None
     for growth in np.arange(start_growth, max_growth + 1E-9, step):
         solution = growth_solution(growth)
         pf = calc_proxy_fitness(solution)
         pf_gap = abs(pf - optimal_pf)
-        if pf_gap < best_pf_gap - 1E-12 or (abs(pf_gap - best_pf_gap) <= 1E-12 and pf > best_pf + 1E-12):
+        if pf <= optimal_pf + 1E-12 and pf_gap < best_pf_gap - 1E-12:
             best_pf_gap = pf_gap
             best_pf = pf
             best_growth = solution.values[r_biomass]
             a_solution = solution
+            print(f"simulate_adaptation: coarse improvement growth={best_growth:.4f}, pf={best_pf:.6f}, gap={best_pf_gap:.6f}")
+        if pf >= stop_pf - 1E-12:
+            hit_growth = solution.values[r_biomass]
+            print(f"simulate_adaptation: coarse stop growth={hit_growth:.4f}, pf={pf:.6f}")
+            break
 
-    fine_start = max(p_growth, best_growth - step)
-    fine_end = min(max_growth, best_growth + step)
-    for growth in np.arange(fine_start, fine_end + 1E-9, 0.01):
+    fine_center = hit_growth if hit_growth is not None else best_growth
+    fine_start = max(p_growth, fine_center - step)
+    fine_end = min(max_growth, fine_center + step)
+    for growth in np.arange(fine_start, fine_end + 1E-9, 0.005):
         solution = growth_solution(growth)
         pf = calc_proxy_fitness(solution)
         pf_gap = abs(pf - optimal_pf)
-        if pf_gap < best_pf_gap - 1E-12 or (abs(pf_gap - best_pf_gap) <= 1E-12 and pf > best_pf + 1E-12):
+        if pf <= optimal_pf + 1E-12 and pf_gap < best_pf_gap - 1E-12:
             best_pf_gap = pf_gap
             best_pf = pf
             best_growth = solution.values[r_biomass]
             a_solution = solution
+            print(f"simulate_adaptation: fine improvement growth={best_growth:.4f}, pf={best_pf:.6f}, gap={best_pf_gap:.6f}")
+            if pf >= stop_pf - 1E-12:
+                hit_growth = solution.values[r_biomass]
+                print(f"simulate_adaptation: fine stop growth={hit_growth:.4f}, pf={pf:.6f}")
+                break
+
+    print(f"simulate_adaptation: final best_growth={best_growth:.4f}, best_pf={best_pf:.6f}, gap={best_pf_gap:.6f}")
 
     fva_df = pd.DataFrame({
         'r_flux': pd.Series(ref_fluxes).reindex(a_solution.values.keys()),
