@@ -58,20 +58,23 @@ if __name__ == '__main__':
 
     n_mutations = 0
     n_samples = 0
+    output_dir = "results/pigment"
     for i, arg in enumerate(sys.argv):
         if i == 1:
             n_mutations = int(arg)
         elif i == 2:
             n_samples = int(arg)
+        elif i == 3:
+            output_dir = arg
     
     futures = []
     with ProcessPoolExecutor(max_workers=WK_NO) as executor:
         for medium_name, nutrients in mediums.items():
-            output_dir = f"results/pigment/{medium_name}"
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
-            futures.append(executor.submit(run_indigoidine, medium_name, nutrients, n_mutations, n_samples, output_dir))
-            futures.append(executor.submit(run_bikaverin, medium_name, nutrients, n_mutations, n_samples, output_dir))
+            medium_output_dir = f"{output_dir}/{medium_name}"
+            if not os.path.exists(medium_output_dir):
+                os.makedirs(medium_output_dir)
+            futures.append(executor.submit(run_indigoidine, medium_name, nutrients, n_mutations, n_samples, medium_output_dir))
+            futures.append(executor.submit(run_bikaverin, medium_name, nutrients, n_mutations, n_samples, medium_output_dir))
             time.sleep(2 * 60)  # stagger job starts by 2 minutes
         for future in futures:
             future.result()

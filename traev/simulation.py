@@ -224,10 +224,8 @@ def simulate_adaptation(gpr_model, ref_fluxes, nutrients, extra_constraints={}, 
             best_pf = pf
             best_growth = solution.values[r_biomass]
             a_solution = solution
-            print(f"simulate_adaptation: coarse improvement growth={best_growth:.4f}, pf={best_pf:.6f}, gap={best_pf_gap:.6f}")
         if pf >= stop_pf - 1E-12:
             hit_growth = solution.values[r_biomass]
-            print(f"simulate_adaptation: coarse stop growth={hit_growth:.4f}, pf={pf:.6f}")
             break
 
     fine_center = hit_growth if hit_growth is not None else best_growth
@@ -242,10 +240,8 @@ def simulate_adaptation(gpr_model, ref_fluxes, nutrients, extra_constraints={}, 
             best_pf = pf
             best_growth = solution.values[r_biomass]
             a_solution = solution
-            print(f"simulate_adaptation: fine improvement growth={best_growth:.4f}, pf={best_pf:.6f}, gap={best_pf_gap:.6f}")
             if pf >= stop_pf - 1E-12:
                 hit_growth = solution.values[r_biomass]
-                print(f"simulate_adaptation: fine stop growth={hit_growth:.4f}, pf={pf:.6f}")
                 break
 
     print(f"simulate_adaptation: final best_growth={best_growth:.4f}, best_pf={best_pf:.6f}, gap={best_pf_gap:.6f}")
