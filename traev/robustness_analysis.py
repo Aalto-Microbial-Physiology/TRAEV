@@ -7,6 +7,9 @@ from config import *
 import random
 
 
+RANDOM_SEED = 0
+
+
 def extend_mutations(base_mutations, single_mutations, max_samples=10000):
     candidate_mutations = set()
     for base in base_mutations:
@@ -21,7 +24,7 @@ def extend_mutations(base_mutations, single_mutations, max_samples=10000):
             candidate_mutations.add(mutation)
 
     candidate_mutations = list(candidate_mutations)
-    random.shuffle(candidate_mutations)
+    random.Random(RANDOM_SEED).shuffle(candidate_mutations)
     return candidate_mutations[:max_samples]
 
 
@@ -64,7 +67,7 @@ def robustness_analysis(gpr_model, fva_df, nutrients, desired_trait, extra_const
             if solution.status == Status.OPTIMAL or solution.status == Status.SUBOPTIMAL:
                 pf = solution.values[r_biomass] / -sum_flux(solution.to_dataframe()['value'], ut_gpr_rxns)
                 dt = sum_flux(solution.to_dataframe()['value'], dt_gpr_rxns) / -sum_flux(solution.to_dataframe()['value'], ut_gpr_rxns)
-                if 0.95*fva_df.loc['proxy_fitness', 'p_flux'] < pf < 1.05*fva_df.loc['proxy_fitness', 'a_flux']:
+                if 0.99*fva_df.loc['proxy_fitness', 'p_flux'] < pf < 1.01*fva_df.loc['proxy_fitness', 'a_flux']:
                     results.append([mutation, 1, pf, min(dt, fva_df.loc['desired_trait', 'p_flux'])])
                     accepted_mutations.append((mutation,))
         
@@ -85,7 +88,7 @@ def robustness_analysis(gpr_model, fva_df, nutrients, desired_trait, extra_const
                     if solution.status == Status.OPTIMAL or solution.status == Status.SUBOPTIMAL:
                         pf = solution.values[r_biomass] / -sum_flux(solution.to_dataframe()['value'], ut_gpr_rxns)
                         dt = sum_flux(solution.to_dataframe()['value'], dt_gpr_rxns) / -sum_flux(solution.to_dataframe()['value'], ut_gpr_rxns)
-                        if 0.95*fva_df.loc['proxy_fitness', 'p_flux'] < pf < 1.05*fva_df.loc['proxy_fitness', 'a_flux']:
+                        if 0.99*fva_df.loc['proxy_fitness', 'p_flux'] < pf < 1.01*fva_df.loc['proxy_fitness', 'a_flux']:
                             results.append([mutation, len(mutation), pf, min(dt, fva_df.loc['desired_trait', 'p_flux'])])
                             next_accepted_mutations.append(mutation)
                             s_count += 1
