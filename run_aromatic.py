@@ -3,11 +3,12 @@ import time
 import os
 import sys
 import traceback
+from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
 from traev.simulation import *
 from traev.robustness_analysis import *
-from modeling import *
-from config import *
+from traev.modeling import *
+from traev.constants import *
 import dill
 import ast
 
@@ -16,6 +17,9 @@ if os.getenv('SLURM_CPUS_PER_TASK'):
     WK_NO = int(os.getenv('SLURM_CPUS_PER_TASK'))
 else:
     WK_NO = os.cpu_count() - 2
+
+
+MODEL_XML = Path(__file__).resolve().parent / 'data' / 'yeast-GEM-9.0.2.xml'
 
 
 anaerobic_constr = {
@@ -109,7 +113,7 @@ if __name__ == '__main__':
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    gpr_model, _ = create_gpr_model(model_xml, type='aromatic')
+    gpr_model, _ = create_gpr_model(str(MODEL_XML), type='aromatic')
     model_dump_file = f"data/aromatic_model_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pkl"
     with open(model_dump_file, 'wb') as f:
         dill.dump((gpr_model, reframed_to_gpr_rxns), f)

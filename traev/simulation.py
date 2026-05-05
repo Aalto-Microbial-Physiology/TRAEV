@@ -1,5 +1,5 @@
 from traev.utils import *
-from config import *
+from traev.constants import *
 import numpy as np
 import pandas as pd
 from reframed.solvers import solver_instance

@@ -2,17 +2,21 @@ import time
 import os
 import sys
 import traceback
+from pathlib import Path
 from traev.simulation import *
 from traev.robustness_analysis import *
-from modeling import *
+from traev.modeling import *
 from concurrent.futures import ProcessPoolExecutor
-from config import *
+from traev.constants import *
 
 
 if os.getenv('SLURM_CPUS_PER_TASK'):
     WK_NO = int(os.getenv('SLURM_CPUS_PER_TASK'))
 else:
     WK_NO = 2
+
+
+MODEL_XML = Path(__file__).resolve().parent / 'data' / 'yeast-GEM-9.0.2.xml'
 
 
 ynb_medium = [substrate_rxns[sub] for sub in ['NH4']]
@@ -23,7 +27,7 @@ a_growth = {"YNB": 0.4, "YP": 0.6}
 
 def run_indigoidine(medium_name, nutrients, n_mutations, n_samples, output_dir):
     try:
-        gpr_model, _ = create_gpr_model(model_xml, type='indigoidine')
+        gpr_model, _ = create_gpr_model(str(MODEL_XML), type='indigoidine')
         if not os.path.exists(f'{output_dir}/indigoidine_fva_results.csv'):
             r_fluxes = simulate_engineered_strain(gpr_model, ynb_medium, [substrate_rxns['Glc']], 0.2, 10, ['R_r_i003'])
             fva_df = simulate_adaptation(gpr_model, r_fluxes, [substrate_rxns['Gal']] + nutrients, aa_uptake_constr if medium_name == 'YP' else {substrate_rxns['NH4']: (-10, 0)}, user_a_growth=a_growth[medium_name])
@@ -39,7 +43,7 @@ def run_indigoidine(medium_name, nutrients, n_mutations, n_samples, output_dir):
 
 def run_bikaverin(medium_name, nutrients, n_mutations, n_samples, output_dir):
     try:
-        gpr_model, _ = create_gpr_model(model_xml, type='bikaverin')
+        gpr_model, _ = create_gpr_model(str(MODEL_XML), type='bikaverin')
         if not os.path.exists(f'{output_dir}/bikaverin_fva_results.csv'):
             r_fluxes = simulate_engineered_strain(gpr_model, ynb_medium, [substrate_rxns['Glc']], 0.2, 10, ['R_r_b003'])
             fva_df = simulate_adaptation(gpr_model, r_fluxes, [substrate_rxns['Gal']] + nutrients, aa_uptake_constr if medium_name == 'YP' else {substrate_rxns['NH4']: (-10, 0)}, user_a_growth=a_growth[medium_name])

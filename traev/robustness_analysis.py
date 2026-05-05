@@ -3,7 +3,7 @@ import pandas as pd
 from traev.utils import *
 from scipy.stats import *
 from reframed.solvers.solution import Status
-from config import *
+from traev.constants import *
 import random
 
 
