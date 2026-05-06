@@ -23,7 +23,7 @@ def extend_mutations(base_mutations, single_mutations, max_samples=10000):
                 continue
             candidate_mutations.add(mutation)
 
-    candidate_mutations = list(candidate_mutations)
+    candidate_mutations = sorted(candidate_mutations)
     random.Random(RANDOM_SEED).shuffle(candidate_mutations)
     return candidate_mutations[:max_samples]
 
