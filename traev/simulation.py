@@ -240,9 +240,9 @@ def simulate_adaptation(gpr_model, ref_fluxes, nutrients, extra_constraints={}, 
             best_pf = pf
             best_growth = solution.values[r_biomass]
             a_solution = solution
-            if pf >= stop_pf - 1E-12:
-                hit_growth = solution.values[r_biomass]
-                break
+        if pf >= stop_pf - 1E-12:
+            hit_growth = solution.values[r_biomass]
+            break
 
     print(f"simulate_adaptation: final best_growth={best_growth:.4f}, best_pf={best_pf:.6f}, gap={best_pf_gap:.6f}")
 

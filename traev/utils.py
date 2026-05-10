@@ -205,5 +205,37 @@ def moma_solver_instance(gpr_model, reference, alg='moma'):
     return solver
 
 
+def MOMA(model, reference, constraints=None, reactions=None, solver=None):
+    """Run MOMA with a lMOMA-like call signature.
+
+    Arguments:
+        model (CBModel): GPR-transformed model.
+        reference (dict): reference flux distribution.
+        constraints (dict): temporary bounds to apply during optimization.
+        reactions (list): kept for API compatibility with reframed lMOMA; unused.
+        solver: optional GurobiMomaSolver for reuse.
+
+    Returns:
+        Solution: solver solution.
+    """
+    if reactions is not None:
+        # The objective is defined on the full reference set in moma_solver_instance.
+        # Keep this argument for drop-in compatibility with reframed.cobra.simulation.lMOMA.
+        pass
+
+    if solver is None:
+        solver, quad_obj, lin_obj = moma_solver_instance(model, reference, alg='moma')
+    else:
+        quad_obj = {(r_id, r_id): 1 for r_id in reference.keys()}
+        lin_obj = {r_id: -2 * reference[r_id] for r_id in reference.keys()}
+
+    return solver.solve(
+        linear=lin_obj,
+        quadratic=quad_obj,
+        minimize=True,
+        constraints=constraints,
+    )
+
+
 def sum_flux(fluxes, gpr_rxns):
     return fluxes[gpr_rxns[0]].sum() + fluxes[gpr_rxns[1]].sum() - fluxes[gpr_rxns[2]].sum()
