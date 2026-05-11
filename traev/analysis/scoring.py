@@ -42,6 +42,12 @@ def load_ra_results(input_dir, ra_pattern="*_ra_results.csv", id_from_path=None)
     ]
 
 
+def calc_tradeoff_corr(df):
+    if len(df) < 2 or df["delta_pf"].std(ddof=0) == 0 or df["delta_dt"].std(ddof=0) == 0:
+        return 0
+    return min(df["delta_pf"].corr(df["delta_dt"]), 0)
+
+
 def calc_scores(ra_dfs, title, env_df=None, output_dir="output", n_mutations=5, k_min=1, same_desired_trait=True):
     max_dt = np.max([ra_df.loc["p_all", "desired_trait"] for _, ra_df in ra_dfs])
 
@@ -64,21 +70,20 @@ def calc_scores(ra_dfs, title, env_df=None, output_dir="output", n_mutations=5, 
             dt_baseline = ra_df.loc["p_all", "desired_trait"]
         ra_df["norm_pf"] = ra_df["proxy_fitness"] / ra_df.loc["a_all", "proxy_fitness"]
         ra_df["norm_dt"] = ra_df["desired_trait"] / dt_baseline
-        ra_df["delta_pf"] = (ra_df["proxy_fitness"] - ra_df.loc["p_all", "proxy_fitness"]) / (
-            ra_df.loc["a_all", "proxy_fitness"] - ra_df.loc["p_all", "proxy_fitness"]
-        )
-        ra_df["delta_dt"] = (ra_df["desired_trait"] - ra_df.loc["p_all", "desired_trait"]) / (
-            ra_df.loc["p_all", "desired_trait"] - ra_df.loc["a_all", "desired_trait"]
-        )
-        ra_df["ddxdf"] = ra_df["delta_pf"] * ra_df["delta_dt"]
+        ra_df["delta_pf"] = ra_df["proxy_fitness"] - ra_df.loc["p_all", "proxy_fitness"]
+        ra_df["delta_dt"] = ra_df["desired_trait"] - ra_df.loc["p_all", "desired_trait"]
+        # ra_df["ddxdf"] = ra_df["delta_pf"] * ra_df["delta_dt"]
         valid_df = ra_df.loc[(~ra_df.index.isin(["p_all", "a_all"])) & ra_df["n"].between(k_min, n_mutations)]
+        ra_df["ddxdf"] = np.nan
+        for n_value in sorted(valid_df["n"].unique()):
+            ra_df.loc[valid_df.index[valid_df["n"] == n_value], "ddxdf"] = calc_tradeoff_corr(valid_df[valid_df["n"] <= n_value])
         accepted_count = len(valid_df)
         if accepted_count == 0:
             robustness_score = 0
             tradeoff_score = 0
         else:
             robustness_score = valid_df["norm_dt"].mean()
-            tradeoff_score = valid_df["ddxdf"].mean()
+            tradeoff_score = calc_tradeoff_corr(valid_df)
         results.append([env_id, accepted_count, robustness_score, tradeoff_score])
 
     sample_stat_res_df = pd.concat(sample_stat_results, axis=0).T
@@ -115,7 +120,7 @@ def plot_line(
         axins = inset_axes(ax, width="40%", height="40%", loc="upper center")
         axins.tick_params(axis="both", which="both", labelsize=16)
 
-    sns.lineplot(x=df_all[x].astype(int), y=y, hue=hue, data=df_all, ax=ax, errorbar=("ci", 95), palette=colors)
+    sns.lineplot(x=df_all[x].astype(int), y=y, hue=hue, data=df_all, ax=ax, errorbar=("ci", 95), palette=colors, linewidth=2)
     for c in ax.collections:
         if isinstance(c, mcoll.PolyCollection):
             c.set_alpha(0.1)
@@ -128,6 +133,7 @@ def plot_line(
             ax=axins,
             errorbar=("ci", 95),
             palette=colors,
+            linewidth=2,
             legend=False,
         )
         g.set_xlabel(None)
@@ -197,7 +203,7 @@ def plot_score_results(
         "ddxdf",
         "env_name",
         "Number of changes in enzyme usage",
-        "Δdesired trait × Δfitness (normalized)",
+        r"Cumulative $\Delta f$-$\Delta d$ correlation",
         "env_name",
         colors,
         False,
