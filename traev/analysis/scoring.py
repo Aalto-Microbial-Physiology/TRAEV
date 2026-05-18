@@ -45,7 +45,7 @@ def load_ra_results(input_dir, ra_pattern="*_ra_results.csv", id_from_path=None)
 def calc_tradeoff_corr(df):
     if len(df) < 2 or df["delta_pf"].std(ddof=0) == 0 or df["delta_dt"].std(ddof=0) == 0:
         return 0
-    return min(df["delta_pf"].corr(df["delta_dt"]), 0)
+    return df["delta_pf"].corr(df["delta_dt"])
 
 
 def calc_scores(ra_dfs, title, env_df=None, output_dir="output", n_mutations=5, k_min=1, same_desired_trait=True):
@@ -176,7 +176,7 @@ def plot_score_results(
     df_all = df_all[df_all["env_name"].isin(env_name_list)].sort_values("env_name")
     print(
         [
-            f"{to_env_name(env_id, env_df)} ({env_id}) (RS = {to_latex(row['robustness_score'])}, TS = ${row['trade-off_score']:.3f}$)"
+            f"{to_env_name(env_id, env_df)} ({env_id}) (RS = {to_latex(row['robustness_score'])}, TS = {to_latex(row['trade-off_score'])})"
             for env_id, row in res_df.loc[env_list, ["robustness_score", "trade-off_score"]].iterrows()
         ]
     )
