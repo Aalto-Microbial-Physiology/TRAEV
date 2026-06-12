@@ -26,11 +26,7 @@ def cluster_rs_ts_environments(res_df, n_clusters=4, random_state=0):
     cluster_stats = cluster_stats.sort_values(("robustness_score", "mean"), ascending=False)
     rs_mean = df["robustness_score"].mean()
     ts_mean = df["trade-off_score"].mean()
-    favorable_clusters = cluster_stats[
-        (cluster_stats[("robustness_score", "mean")] > rs_mean)
-        & (cluster_stats[("trade-off_score", "mean")] < ts_mean)
-    ].index.tolist()
-    return df, cluster_stats, rs_mean, ts_mean, favorable_clusters
+    return df, cluster_stats, rs_mean, ts_mean
 
 
 def summarize_cluster_nutrients(cluster_df, env_df):
@@ -69,8 +65,8 @@ def summarize_cluster_nutrients(cluster_df, env_df):
         for feat, cnt in cluster_counts.items():
             cluster_freq = cnt / n_envs
             overall_freq = all_counts.get(feat, 0) / total_envs
-            lift = cluster_freq / overall_freq if overall_freq > 0 else np.nan
-            score = np.log2(lift) * np.sqrt(cnt) if pd.notna(lift) and lift > 0 else np.nan
+            fold_enrichment = cluster_freq / overall_freq if overall_freq > 0 else np.nan
+            score = np.log2(fold_enrichment) * np.sqrt(cnt) if pd.notna(fold_enrichment) and fold_enrichment > 0 else np.nan
             mask = feature_mask(merged["nutrient_list"], feat, size)
             rows.append(
                 [
@@ -79,7 +75,7 @@ def summarize_cluster_nutrients(cluster_df, env_df):
                     cnt,
                     cluster_freq,
                     overall_freq,
-                    lift,
+                    fold_enrichment,
                     score,
                     merged.loc[mask, "robustness_score"].mean(),
                     merged.loc[mask, "trade-off_score"].mean(),
@@ -93,13 +89,13 @@ def summarize_cluster_nutrients(cluster_df, env_df):
                 "count",
                 "cluster_freq",
                 "overall_freq",
-                "lift",
+                "fold_enrichment",
                 "score",
                 "feature_mean_rs",
                 "feature_mean_ts",
             ],
         )
-        return out.sort_values(["score", "cluster_freq", "lift", "count"], ascending=False).reset_index(drop=True)
+        return out.sort_values(["score", "cluster_freq", "fold_enrichment", "count"], ascending=False).reset_index(drop=True)
 
     single_df = to_df(count_features(merged["nutrient_list"], size=1), count_features(all_envs["nutrient_list"], size=1), "single")
     pair_df = to_df(count_features(merged["nutrient_list"], size=2), count_features(all_envs["nutrient_list"], size=2), "pair")
@@ -262,7 +258,7 @@ def load_rs_ts_cluster_result(output_prefix):
 
 
 def summarize_favorable_rs_ts_clusters(res_df, env_df, title, output_prefix, output_dir, n_clusters=4, random_state=0):
-    cluster_df, cluster_stats, rs_mean, ts_mean, favorable_clusters = cluster_rs_ts_environments(
+    cluster_df, cluster_stats, rs_mean, ts_mean = cluster_rs_ts_environments(
         res_df,
         n_clusters=n_clusters,
         random_state=random_state,
@@ -281,9 +277,8 @@ def summarize_favorable_rs_ts_clusters(res_df, env_df, title, output_prefix, out
         single_df, pair_df = summarize_cluster_nutrients(sub, env_df)
         combined_df = pd.concat([single_df, pair_df], axis=0, ignore_index=True)
         combined_df.insert(0, "cluster", cluster_id)
-        combined_df.insert(1, "is_favorable", cluster_id in favorable_clusters)
-        combined_df.insert(2, "cluster_mean_rs", cluster_stats.loc[cluster_id, ("robustness_score", "mean")])
-        combined_df.insert(3, "cluster_mean_ts", cluster_stats.loc[cluster_id, ("trade-off_score", "mean")])
+        combined_df.insert(1, "cluster_mean_rs", cluster_stats.loc[cluster_id, ("robustness_score", "mean")])
+        combined_df.insert(2, "cluster_mean_ts", cluster_stats.loc[cluster_id, ("trade-off_score", "mean")])
         rows_to_save.append(combined_df)
 
     if rows_to_save:
