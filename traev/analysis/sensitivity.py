@@ -88,7 +88,7 @@ def plot_sensitivity_line(
         axis=1,
     )
     param_order = ordered_df["param_label"].drop_duplicates().tolist()
-    ylabel = {"robustness_score": "Robustness score", "tradeoff_score": "Trade-off score"}[metric]
+    ylabel = {"robustness_score": "Robustness Score", "tradeoff_score": "Trade-off Score"}[metric]
     ordered_df["param_label"] = pd.Categorical(ordered_df["param_label"], categories=param_order, ordered=True)
     ordered_df = ordered_df.sort_values(["param_label", group_col])
 

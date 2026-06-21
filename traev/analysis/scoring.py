@@ -203,7 +203,7 @@ def plot_score_results(
         "ddxdf",
         "env_name",
         "Number of changes in enzyme usage",
-        r"Cumulative trait-fitness trade-off",
+        r"Cumulative $\Delta d$-$\Delta f$ correlation",
         "env_name",
         colors,
         False,

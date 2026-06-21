@@ -14,6 +14,9 @@ from sklearn.preprocessing import StandardScaler
 from traev.constants import carbon_sources, substrate_symbols
 
 
+substrate_symbols = substrate_symbols | {"ammonium": r"NH$_4$"}
+
+
 def cluster_rs_ts_environments(res_df, n_clusters=4, random_state=0):
     df = res_df.copy().reset_index().rename(columns={"index": "env_id"})
     X = df[["robustness_score", "trade-off_score"]].values
@@ -213,7 +216,7 @@ def plot_feature_mean_rs_ts(feature_df, title, output_dir, abbr=True):
     texts = []
     for _, row in highlight_df.iterrows():
         label = ",".join(substrate_symbols[n.strip()] for n in row["feature"].split(",")) if abbr else row["feature"]
-        fontsize = 10 if row["feature_type"] == "single" else 8
+        fontsize = 13 if row["feature_type"] == "single" else 11
         texts.append(
             plt.text(
                 row["feature_mean_rs"],
