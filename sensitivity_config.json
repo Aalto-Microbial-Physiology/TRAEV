@@ -1,0 +1,112 @@
+{
+  "jobs": [
+    {
+      "kind": "pigment",
+      "output_root": "results/pigment_sensitivity",
+      "runs": [
+        {
+          "id": "ra_0001",
+          "n_mutations": 10,
+          "n_samples": 30
+        },
+        {
+          "id": "ra_0002",
+          "n_mutations": 10,
+          "n_samples": 50
+        },
+        {
+          "id": "ra_0003",
+          "n_mutations": 10,
+          "n_samples": 100
+        },
+        {
+          "id": "ra_0004",
+          "n_mutations": 20,
+          "n_samples": 30
+        },
+        {
+          "id": "ra_0005",
+          "n_mutations": 20,
+          "n_samples": 50
+        },
+        {
+          "id": "ra_0006",
+          "n_mutations": 20,
+          "n_samples": 100
+        },
+        {
+          "id": "ra_0007",
+          "n_mutations": 50,
+          "n_samples": 30
+        },
+        {
+          "id": "ra_0008",
+          "n_mutations": 50,
+          "n_samples": 50
+        },
+        {
+          "id": "ra_0009",
+          "n_mutations": 50,
+          "n_samples": 100
+        }
+      ]
+    },
+    {
+      "kind": "aromatic",
+      "output_root": "results/aromatic_sensitivity",
+      "target_aromas": [
+        "PEA",
+        "BCHA"
+      ],
+      "anaerobic": true,
+      "env_input": "data/ale_envs.csv",
+      "runs": [
+        {
+          "id": "ra_0001",
+          "n_mutations": 10,
+          "n_samples": 30
+        },
+        {
+          "id": "ra_0002",
+          "n_mutations": 10,
+          "n_samples": 50
+        },
+        {
+          "id": "ra_0003",
+          "n_mutations": 10,
+          "n_samples": 100
+        },
+        {
+          "id": "ra_0004",
+          "n_mutations": 20,
+          "n_samples": 30
+        },
+        {
+          "id": "ra_0005",
+          "n_mutations": 20,
+          "n_samples": 50
+        },
+        {
+          "id": "ra_0006",
+          "n_mutations": 20,
+          "n_samples": 100
+        },
+        {
+          "id": "ra_0007",
+          "n_mutations": 50,
+          "n_samples": 30
+        },
+        {
+          "id": "ra_0008",
+          "n_mutations": 50,
+          "n_samples": 50
+        },
+        {
+          "id": "ra_0009",
+          "n_mutations": 50,
+          "n_samples": 100
+        }
+      ]
+    }
+  ]
+}

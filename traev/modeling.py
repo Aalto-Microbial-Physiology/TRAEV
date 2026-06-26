@@ -1,9 +1,11 @@
 import os
-import pandas as pd
+
 import cobra
-from cobra import Reaction, Metabolite
+import pandas as pd
 import reframed
-from config import *
+from cobra import Metabolite, Reaction
+
+from traev.constants import *
 from traev.utils import *
 
 
@@ -39,6 +41,7 @@ def add_indigoidine_pathway(cobra_model):
     cobra_model.add_reactions([r_i001, r_i002, r_i003])
     return cobra_model
 
+
 def add_bikaverin_pathway(cobra_model):
     bik_c = Metabolite(id='s_b001', name='bikaverin', formula='C20H14O8', charge=0, compartment='c')
     bik_e = Metabolite(id='s_b002', name='bikaverin', formula='C20H14O8', charge=0, compartment='e')
@@ -68,6 +71,7 @@ def add_bikaverin_pathway(cobra_model):
     r_b003 = add_reaction('r_b003', 'bikaverin exchange', 0, 1000, {bik_e: -1.0})
     cobra_model.add_reactions([r_b001, r_b002, r_b003])
     return cobra_model
+
 
 def create_gpr_model(model_file, type='aromatic'):
     reframed_model_file = f'{os.path.dirname(model_file)}/reframed-GEM-{type}.xml'

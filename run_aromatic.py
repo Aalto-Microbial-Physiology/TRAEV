@@ -2,11 +2,13 @@ from datetime import datetime
 import time
 import os
 import sys
-from concurrent.futures import ProcessPoolExecutor, wait
+import traceback
+from pathlib import Path
+from concurrent.futures import ProcessPoolExecutor
 from traev.simulation import *
 from traev.robustness_analysis import *
-from modeling import *
-from config import *
+from traev.modeling import *
+from traev.constants import *
 import dill
 import ast
 
@@ -15,6 +17,9 @@ if os.getenv('SLURM_CPUS_PER_TASK'):
     WK_NO = int(os.getenv('SLURM_CPUS_PER_TASK'))
 else:
     WK_NO = os.cpu_count() - 2
+
+
+MODEL_XML = Path(__file__).resolve().parent / 'data' / 'yeast-GEM-9.0.2.xml'
 
 
 anaerobic_constr = {
@@ -40,28 +45,37 @@ anaerobic_constr = {
 }
 wine_must = [substrate_rxns[sub] for sub in ['Fru', 'Glc'] + nitrogen_sources]
 # wine_must = [substrate_rxns[sub] for sub in ['Glc', 'NH4']]
-target_growth = 0.4
+r_growth = 0.4
+a_growth = 0.6
 
 
 def run_simulations(model_dump_file, env_id, evo_nutrients, appl_nutrients, anaerobic, output_dir):
-    if not os.path.exists(f'{output_dir}/{env_id}_fva_results.csv'):
+    try:
+        if not os.path.exists(f'{output_dir}/{env_id}_fva_results.csv'):
+            with open(model_dump_file, 'rb') as f:
+                gpr_model, rtgr = dill.load(f)
+                reframed_to_gpr_rxns.update(rtgr)
+            r_fluxes = simulate_ale_strain(gpr_model, evo_nutrients, r_growth)
+            fva_df = simulate_adaptation(gpr_model, r_fluxes, appl_nutrients,
+                (anaerobic_constr if anaerobic else {}) | {rxn: aa_uptake_constr[rxn] for rxn in appl_nutrients if rxn in aa_uptake_constr}, user_a_growth=a_growth)
+            fva_df.to_csv(f'{output_dir}/{env_id}_fva_results.csv')
+    except Exception:
+        traceback.print_exc()
+        raise
+
+
+def run_robustness_analysis(model_dump_file, env_id, nutrients, anaerobic, desired_trait, n_mutations, n_samples, input_dir, output_dir):
+    try:
         with open(model_dump_file, 'rb') as f:
             gpr_model, rtgr = dill.load(f)
             reframed_to_gpr_rxns.update(rtgr)
-        r_fluxes = simulate_ale_strain(gpr_model, evo_nutrients, target_growth)
-        fva_df = simulate_adaptation(gpr_model, r_fluxes, appl_nutrients,
-            (anaerobic_constr if anaerobic else {}) | {rxn: aa_uptake_constr[rxn] for rxn in appl_nutrients if rxn in aa_uptake_constr})
-        fva_df.to_csv(f'{output_dir}/{env_id}_fva_results.csv')
-
-
-def run_robustness_analysis(model_dump_file, env_id, nutrients, anaerobic, desired_trait, n_mutations, n_samples, output_dir):
-    with open(model_dump_file, 'rb') as f:
-        gpr_model, rtgr = dill.load(f)
-        reframed_to_gpr_rxns.update(rtgr)
-    fva_df = pd.read_csv(f'{output_dir}/{env_id}_fva_results.csv', index_col=0)
-    ra_df = robustness_analysis(gpr_model, fva_df, nutrients, desired_trait,
-        (anaerobic_constr if anaerobic else {}) | {rxn: aa_uptake_constr[rxn] for rxn in nutrients if rxn in aa_uptake_constr}, n_mutations, n_samples)
-    ra_df.to_csv(f'{output_dir}/{env_id}_ra_results.csv')
+        fva_df = pd.read_csv(f'{input_dir}/{env_id}_fva_results.csv', index_col=0)
+        ra_df = robustness_analysis(gpr_model, fva_df, nutrients, desired_trait,
+            (anaerobic_constr if anaerobic else {}) | {rxn: aa_uptake_constr[rxn] for rxn in nutrients if rxn in aa_uptake_constr}, n_mutations, n_samples)
+        ra_df.to_csv(f'{output_dir}/{env_id}_ra_results.csv')
+    except Exception:
+        traceback.print_exc()
+        raise
 
 
 if __name__ == '__main__':
@@ -69,11 +83,14 @@ if __name__ == '__main__':
 
     env_df = pd.read_csv('data/ale_envs.csv', index_col=0)
     dt_df = pd.read_csv('data/dt_aromatic.csv', index_col=0)
+    target_aromas = []
+    anaerobic = False
+    n_mutations = 0
     n_samples = 0
     output_dir = "results/aromatic"
     for i, arg in enumerate(sys.argv):
         if i == 1:
-            target_aroma = arg
+            target_aromas = [target.strip() for target in arg.split(',') if target.strip()]
         elif i == 2:
             anaerobic = True if arg == 'Y' else False
         elif i == 3:
@@ -89,25 +106,33 @@ if __name__ == '__main__':
         elif i == 6:
             output_dir = arg
 
-    desired_trait = dt_df[dt_df[f'DT_{target_aroma}'] != 0].index.tolist()
+    if not target_aromas:
+        raise ValueError("At least one target aroma must be provided.")
+
     evo_envs = [(env_id, ast.literal_eval(row['exchange_reactions'])) for env_id, row in env_df.iterrows()]
-    
-    output_dir = f"{output_dir}/{target_aroma}_{'ana' if anaerobic else 'aer'}"
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    gpr_model, _ = create_gpr_model(model_xml, type='aromatic')
+    gpr_model, _ = create_gpr_model(str(MODEL_XML), type='aromatic')
     model_dump_file = f"data/aromatic_model_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pkl"
     with open(model_dump_file, 'wb') as f:
         dill.dump((gpr_model, reframed_to_gpr_rxns), f)
 
     with ProcessPoolExecutor(max_workers=WK_NO) as executor:
         futures = [executor.submit(run_simulations, model_dump_file, env_id, evo_nutrients, wine_must, anaerobic, output_dir) for env_id, evo_nutrients in evo_envs]
-        wait(futures)
-    
-    with ProcessPoolExecutor(max_workers=WK_NO) as executor:
-        futures = [executor.submit(run_robustness_analysis, model_dump_file, env_id, wine_must, anaerobic, desired_trait, n_mutations, n_samples, output_dir) for env_id, _ in evo_envs]
-        wait(futures)
-            
+        for future in futures:
+            future.result()
+
+    for target_aroma in target_aromas:
+        desired_trait = dt_df[dt_df[f'DT_{target_aroma}'] != 0].index.tolist()
+        target_output_dir = f"{output_dir}/{target_aroma}_{'ana' if anaerobic else 'aer'}"
+        if not os.path.exists(target_output_dir):
+            os.makedirs(target_output_dir)
+        with ProcessPoolExecutor(max_workers=WK_NO) as executor:
+            futures = [executor.submit(run_robustness_analysis, model_dump_file, env_id, wine_must, anaerobic, desired_trait, n_mutations, n_samples, output_dir, target_output_dir) for env_id, _ in evo_envs]
+            for future in futures:
+                future.result()
+        
     if os.path.exists(model_dump_file):
         os.remove(model_dump_file)
     print(f"Completed in {(time.time() - start_time) / 60 / 60:.2f}h.\n")
