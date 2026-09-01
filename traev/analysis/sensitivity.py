@@ -29,6 +29,8 @@ def load_sensitivity(
                 params = json.loads(params_path.read_text(encoding="utf-8"))
             else:
                 params = run_lookup[run_dir.name]
+            params.setdefault("delta", 1E-2)
+            params.setdefault("epsilon", 1E-4)
             yield run_dir, params
 
     def score_rows(score_df, params, run_id):
@@ -38,6 +40,8 @@ def load_sensitivity(
                 "run_id": run_id,
                 "n_mutations": params["n_mutations"],
                 "n_samples": params["n_samples"],
+                "delta": params["delta"],
+                "epsilon": params["epsilon"],
                 "group_id": group_id,
                 "accepted_count": row["accepted_count"],
                 "robustness_score": row["robustness_score"],
@@ -82,9 +86,15 @@ def plot_sensitivity_line(
     legend_title=None,
     show_legend=True,
 ):
-    ordered_df = summary_df.sort_values(["n_mutations", "n_samples"]).copy()
+    def scientific_notation(value):
+        coefficient, exponent = f"{value:.0e}".split("e")
+        if coefficient == "1":
+            return rf"$\mathregular{{10^{{{int(exponent)}}}}}$"
+        return rf"$\mathregular{{{coefficient}\times10^{{{int(exponent)}}}}}$"
+
+    ordered_df = summary_df.sort_values(["delta", "epsilon", "n_mutations", "n_samples"], ascending=[False, False, True, True]).copy()
     ordered_df["param_label"] = ordered_df.apply(
-        lambda row: f"({int(row['n_mutations'])}, {int(row['n_samples'])})",
+        lambda row: f"({int(row['n_mutations'])}, {int(row['n_samples'])}; {scientific_notation(row['delta'])}, {scientific_notation(row['epsilon'])})",
         axis=1,
     )
     param_order = ordered_df["param_label"].drop_duplicates().tolist()
@@ -106,7 +116,7 @@ def plot_sensitivity_line(
         legend=show_legend,
         ax=ax,
     )
-    ax.set_xlabel("(n_mutations, n_samples)")
+    ax.set_xlabel(r"($m$, $n$; $\delta$, $\epsilon$)")
     ax.set_ylabel(ylabel)
     ax.tick_params(axis="x", rotation=45)
     handles, labels = ax.get_legend_handles_labels()
