@@ -67,8 +67,11 @@ def organize_aromatic_run(source_root, output_root, run_id, params, target_aroma
 def run_pigment_sensitivity(job):
     output_root = REPO_ROOT / job.get('output_root', 'results/pigment_sensitivity')
     output_root.mkdir(parents=True, exist_ok=True)
+    default_delta = job.get('delta', 1E-2)
+    default_epsilon = job.get('epsilon', 1E-4)
     runs = job['runs']
-    for idx, params in enumerate(runs, start=1):
+    for idx, run_params in enumerate(runs, start=1):
+        params = run_params | {'delta': run_params.get('delta', default_delta), 'epsilon': run_params.get('epsilon', default_epsilon), 'custom_tolerance': 'delta' in run_params or 'epsilon' in run_params}
         run_id = params.get('id', f'ra_{idx:04d}')
         delta = params.get('delta', 1E-2)
         epsilon = params.get('epsilon', 1E-4)
@@ -89,6 +92,8 @@ def run_pigment_sensitivity(job):
 def run_aromatic_sensitivity(job):
     output_root = REPO_ROOT / job.get('output_root', 'results/aromatic_sensitivity')
     output_root.mkdir(parents=True, exist_ok=True)
+    default_delta = job.get('delta', 1E-2)
+    default_epsilon = job.get('epsilon', 1E-4)
     target_aromas = job['target_aromas']
     if isinstance(target_aromas, str):
         target_aromas = [target.strip() for target in target_aromas.split(',') if target.strip()]
@@ -96,7 +101,8 @@ def run_aromatic_sensitivity(job):
     anaerobic = bool(job.get('anaerobic', False))
     env_input = job.get('env_input', 'data/ale_envs.csv')
     runs = job['runs']
-    for idx, params in enumerate(runs, start=1):
+    for idx, run_params in enumerate(runs, start=1):
+        params = run_params | {'delta': run_params.get('delta', default_delta), 'epsilon': run_params.get('epsilon', default_epsilon), 'custom_tolerance': 'delta' in run_params or 'epsilon' in run_params}
         run_id = params.get('id', f'ra_{idx:04d}')
         delta = params.get('delta', 1E-2)
         epsilon = params.get('epsilon', 1E-4)
