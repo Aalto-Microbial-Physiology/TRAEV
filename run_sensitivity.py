@@ -75,7 +75,7 @@ def run_pigment_sensitivity(job):
         run_id = params.get('id', f'ra_{idx:04d}')
         delta = params.get('delta', 1E-2)
         epsilon = params.get('epsilon', 1E-4)
-        source_root = output_root / '_cache' / f'delta_{delta:g}_epsilon_{epsilon:g}'
+        source_root = output_root / 'fva_cache' / f'delta_{delta:g}_epsilon_{epsilon:g}'
         run_command(
             [
                 'run_pigment.py',
@@ -106,7 +106,7 @@ def run_aromatic_sensitivity(job):
         run_id = params.get('id', f'ra_{idx:04d}')
         delta = params.get('delta', 1E-2)
         epsilon = params.get('epsilon', 1E-4)
-        source_root = output_root / '_cache' / f'delta_{delta:g}_epsilon_{epsilon:g}'
+        source_root = output_root / 'fva_cache' / f'delta_{delta:g}_epsilon_{epsilon:g}'
         run_command(
             [
                 'run_aromatic.py',
