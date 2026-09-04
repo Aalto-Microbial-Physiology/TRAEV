@@ -52,14 +52,14 @@
           "n_samples": 100
         },
         {
-          "id": "ra_de02",
+          "id": "ra_de01",
           "n_mutations": 50,
           "n_samples": 100,
           "delta": 3E-2,
           "epsilon": 1E-3
         },
         {
-          "id": "ra_de01",
+          "id": "ra_de02",
           "n_mutations": 50,
           "n_samples": 100,
           "delta": 1E-1,
@@ -125,14 +125,14 @@
           "n_samples": 100
         },
         {
-          "id": "ra_de02",
+          "id": "ra_de01",
           "n_mutations": 50,
           "n_samples": 100,
           "delta": 3E-2,
           "epsilon": 1E-3
         },
         {
-          "id": "ra_de01",
+          "id": "ra_de02",
           "n_mutations": 50,
           "n_samples": 100,
           "delta": 1E-1,
