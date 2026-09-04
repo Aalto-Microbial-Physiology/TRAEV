@@ -7,20 +7,6 @@
       "output_root": "results/pigment_sensitivity",
       "runs": [
         {
-          "id": "ra_de01",
-          "n_mutations": 50,
-          "n_samples": 100,
-          "delta": 1E-1,
-          "epsilon": 1E-2
-        },
-        {
-          "id": "ra_de02",
-          "n_mutations": 50,
-          "n_samples": 100,
-          "delta": 3E-2,
-          "epsilon": 1E-3
-        },
-        {
           "id": "ra_0001",
           "n_mutations": 10,
           "n_samples": 30
@@ -64,6 +50,20 @@
           "id": "ra_0009",
           "n_mutations": 50,
           "n_samples": 100
+        },
+        {
+          "id": "ra_de02",
+          "n_mutations": 50,
+          "n_samples": 100,
+          "delta": 3E-2,
+          "epsilon": 1E-3
+        },
+        {
+          "id": "ra_de01",
+          "n_mutations": 50,
+          "n_samples": 100,
+          "delta": 1E-1,
+          "epsilon": 1E-2
         }
       ]
     },
@@ -80,20 +80,6 @@
       "env_input": "data/ale_envs.csv",
       "runs": [
         {
-          "id": "ra_de01",
-          "n_mutations": 50,
-          "n_samples": 100,
-          "delta": 1E-1,
-          "epsilon": 1E-2
-        },
-        {
-          "id": "ra_de02",
-          "n_mutations": 50,
-          "n_samples": 100,
-          "delta": 3E-2,
-          "epsilon": 1E-3
-        },
-        {
           "id": "ra_0001",
           "n_mutations": 10,
           "n_samples": 30
@@ -137,6 +123,20 @@
           "id": "ra_0009",
           "n_mutations": 50,
           "n_samples": 100
+        },
+        {
+          "id": "ra_de02",
+          "n_mutations": 50,
+          "n_samples": 100,
+          "delta": 3E-2,
+          "epsilon": 1E-3
+        },
+        {
+          "id": "ra_de01",
+          "n_mutations": 50,
+          "n_samples": 100,
+          "delta": 1E-1,
+          "epsilon": 1E-2
         }
       ]
     }
