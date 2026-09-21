@@ -29,6 +29,9 @@ def load_sensitivity(
                 params = json.loads(params_path.read_text(encoding="utf-8"))
             else:
                 params = run_lookup[run_dir.name]
+            params.setdefault("delta", 1E-2)
+            params.setdefault("epsilon", 1E-4)
+            params.setdefault("custom_tolerance", (params["delta"], params["epsilon"]) != (1E-2, 1E-4))
             yield run_dir, params
 
     def score_rows(score_df, params, run_id):
@@ -38,6 +41,9 @@ def load_sensitivity(
                 "run_id": run_id,
                 "n_mutations": params["n_mutations"],
                 "n_samples": params["n_samples"],
+                "delta": params["delta"],
+                "epsilon": params["epsilon"],
+                "custom_tolerance": params["custom_tolerance"],
                 "group_id": group_id,
                 "accepted_count": row["accepted_count"],
                 "robustness_score": row["robustness_score"],
@@ -82,11 +88,14 @@ def plot_sensitivity_line(
     legend_title=None,
     show_legend=True,
 ):
-    ordered_df = summary_df.sort_values(["n_mutations", "n_samples"]).copy()
-    ordered_df["param_label"] = ordered_df.apply(
-        lambda row: f"({int(row['n_mutations'])}, {int(row['n_samples'])})",
-        axis=1,
-    )
+    def param_label(row):
+        label = f"({int(row['n_mutations'])}, {int(row['n_samples'])})"
+        if row["custom_tolerance"]:
+            label += "\n" + rf"$(\delta, \epsilon)$=({row['delta']:g}, {row['epsilon']:g})"
+        return label
+
+    ordered_df = summary_df.sort_values(["n_mutations", "n_samples", "delta", "epsilon"]).copy()
+    ordered_df["param_label"] = ordered_df.apply(param_label, axis=1)
     param_order = ordered_df["param_label"].drop_duplicates().tolist()
     ylabel = {"robustness_score": "Robustness Score", "tradeoff_score": "Trade-off Score"}[metric]
     ordered_df["param_label"] = pd.Categorical(ordered_df["param_label"], categories=param_order, ordered=True)
@@ -106,9 +115,9 @@ def plot_sensitivity_line(
         legend=show_legend,
         ax=ax,
     )
-    ax.set_xlabel("(n_mutations, n_samples)")
+    ax.set_xlabel(r"($m$, $n$)")
     ax.set_ylabel(ylabel)
-    ax.tick_params(axis="x", rotation=45)
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor", fontsize=15)
     handles, labels = ax.get_legend_handles_labels()
     if show_legend:
         legend = ax.legend(

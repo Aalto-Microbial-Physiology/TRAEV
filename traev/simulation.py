@@ -148,7 +148,7 @@ def simulate_engineered_strain(gpr_model, medium, carbon_source, target_growth, 
     return solution.values
 
 
-def simulate_adaptation(gpr_model, ref_fluxes, nutrients, extra_constraints={}, user_p_growth=None, user_a_growth=None):
+def simulate_adaptation(gpr_model, ref_fluxes, nutrients, extra_constraints={}, user_p_growth=None, user_a_growth=None, delta=1E-2, epsilon=1E-4):
     """ Simulation of adaptation in given environment:
 
     Arguments:
@@ -158,6 +158,8 @@ def simulate_adaptation(gpr_model, ref_fluxes, nutrients, extra_constraints={}, 
         extra_constraints (dict): extra constraints
         user_p_growth (double): user defined specific growth rate of plastic state (optional)
         user_a_growth (double): user defined specific growth rate of adapted state (optional)
+        delta (float): relative ROOM tolerance (default: 1E-2)
+        epsilon (float): absolute ROOM tolerance (default: 1E-4)
         
     Returns:
         fva_df (Dataframe): Dataframe of the concatenation of r, p and a fluxes
@@ -191,8 +193,8 @@ def simulate_adaptation(gpr_model, ref_fluxes, nutrients, extra_constraints={}, 
             reference=p_reference,
             constraints=gpr_constraints | {r_biomass: (growth, growth)},
             reactions=gpr_model.u_reactions,
-            delta=1E-2,
-            epsilon=1E-4,
+            delta=delta,
+            epsilon=epsilon,
         )
 
     p_growth = p_solution.values[r_biomass]

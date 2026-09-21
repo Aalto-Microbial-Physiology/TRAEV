@@ -25,12 +25,12 @@ mediums = {"YNB": ynb_medium, "YP": yp_medium}
 a_growth = {"YNB": 0.4, "YP": 0.6}
 
 
-def run_indigoidine(medium_name, nutrients, n_mutations, n_samples, output_dir):
+def run_indigoidine(medium_name, nutrients, n_mutations, n_samples, output_dir, delta=1E-2, epsilon=1E-4):
     try:
         gpr_model, _ = create_gpr_model(str(MODEL_XML), type='indigoidine')
         if not os.path.exists(f'{output_dir}/indigoidine_fva_results.csv'):
             r_fluxes = simulate_engineered_strain(gpr_model, ynb_medium, [substrate_rxns['Glc']], 0.2, 10, ['R_r_i003'])
-            fva_df = simulate_adaptation(gpr_model, r_fluxes, [substrate_rxns['Gal']] + nutrients, aa_uptake_constr if medium_name == 'YP' else {substrate_rxns['NH4']: (-10, 0)}, user_a_growth=a_growth[medium_name])
+            fva_df = simulate_adaptation(gpr_model, r_fluxes, [substrate_rxns['Gal']] + nutrients, aa_uptake_constr if medium_name == 'YP' else {substrate_rxns['NH4']: (-10, 0)}, user_a_growth=a_growth[medium_name], delta=delta, epsilon=epsilon)
             fva_df.to_csv(f'{output_dir}/indigoidine_fva_results.csv')
         else:
             fva_df = pd.read_csv(f'{output_dir}/indigoidine_fva_results.csv', index_col=0)
@@ -41,12 +41,12 @@ def run_indigoidine(medium_name, nutrients, n_mutations, n_samples, output_dir):
         raise
 
 
-def run_bikaverin(medium_name, nutrients, n_mutations, n_samples, output_dir):
+def run_bikaverin(medium_name, nutrients, n_mutations, n_samples, output_dir, delta=1E-2, epsilon=1E-4):
     try:
         gpr_model, _ = create_gpr_model(str(MODEL_XML), type='bikaverin')
         if not os.path.exists(f'{output_dir}/bikaverin_fva_results.csv'):
             r_fluxes = simulate_engineered_strain(gpr_model, ynb_medium, [substrate_rxns['Glc']], 0.2, 10, ['R_r_b003'])
-            fva_df = simulate_adaptation(gpr_model, r_fluxes, [substrate_rxns['Gal']] + nutrients, aa_uptake_constr if medium_name == 'YP' else {substrate_rxns['NH4']: (-10, 0)}, user_a_growth=a_growth[medium_name])
+            fva_df = simulate_adaptation(gpr_model, r_fluxes, [substrate_rxns['Gal']] + nutrients, aa_uptake_constr if medium_name == 'YP' else {substrate_rxns['NH4']: (-10, 0)}, user_a_growth=a_growth[medium_name], delta=delta, epsilon=epsilon)
             fva_df.to_csv(f'{output_dir}/bikaverin_fva_results.csv')
         else:
             fva_df = pd.read_csv(f'{output_dir}/bikaverin_fva_results.csv', index_col=0)
@@ -63,6 +63,8 @@ if __name__ == '__main__':
     n_mutations = 0
     n_samples = 0
     output_dir = "results/pigment"
+    delta = 1E-2
+    epsilon = 1E-4
     for i, arg in enumerate(sys.argv):
         if i == 1:
             n_mutations = int(arg)
@@ -70,6 +72,10 @@ if __name__ == '__main__':
             n_samples = int(arg)
         elif i == 3:
             output_dir = arg
+        elif i == 4:
+            delta = float(arg)
+        elif i == 5:
+            epsilon = float(arg)
     
     futures = []
     with ProcessPoolExecutor(max_workers=WK_NO) as executor:
@@ -77,8 +83,8 @@ if __name__ == '__main__':
             medium_output_dir = f"{output_dir}/{medium_name}"
             if not os.path.exists(medium_output_dir):
                 os.makedirs(medium_output_dir)
-            futures.append(executor.submit(run_indigoidine, medium_name, nutrients, n_mutations, n_samples, medium_output_dir))
-            futures.append(executor.submit(run_bikaverin, medium_name, nutrients, n_mutations, n_samples, medium_output_dir))
+            futures.append(executor.submit(run_indigoidine, medium_name, nutrients, n_mutations, n_samples, medium_output_dir, delta, epsilon))
+            futures.append(executor.submit(run_bikaverin, medium_name, nutrients, n_mutations, n_samples, medium_output_dir, delta, epsilon))
             time.sleep(2 * 60)  # stagger job starts by 2 minutes
         for future in futures:
             future.result()

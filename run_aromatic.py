@@ -49,7 +49,7 @@ r_growth = 0.4
 a_growth = 0.6
 
 
-def run_simulations(model_dump_file, env_id, evo_nutrients, appl_nutrients, anaerobic, output_dir):
+def run_simulations(model_dump_file, env_id, evo_nutrients, appl_nutrients, anaerobic, output_dir, delta=1E-2, epsilon=1E-4):
     try:
         if not os.path.exists(f'{output_dir}/{env_id}_fva_results.csv'):
             with open(model_dump_file, 'rb') as f:
@@ -57,7 +57,7 @@ def run_simulations(model_dump_file, env_id, evo_nutrients, appl_nutrients, anae
                 reframed_to_gpr_rxns.update(rtgr)
             r_fluxes = simulate_ale_strain(gpr_model, evo_nutrients, r_growth)
             fva_df = simulate_adaptation(gpr_model, r_fluxes, appl_nutrients,
-                (anaerobic_constr if anaerobic else {}) | {rxn: aa_uptake_constr[rxn] for rxn in appl_nutrients if rxn in aa_uptake_constr}, user_a_growth=a_growth)
+                (anaerobic_constr if anaerobic else {}) | {rxn: aa_uptake_constr[rxn] for rxn in appl_nutrients if rxn in aa_uptake_constr}, user_a_growth=a_growth, delta=delta, epsilon=epsilon)
             fva_df.to_csv(f'{output_dir}/{env_id}_fva_results.csv')
     except Exception:
         traceback.print_exc()
@@ -88,6 +88,8 @@ if __name__ == '__main__':
     n_mutations = 0
     n_samples = 0
     output_dir = "results/aromatic"
+    delta = 1E-2
+    epsilon = 1E-4
     for i, arg in enumerate(sys.argv):
         if i == 1:
             target_aromas = [target.strip() for target in arg.split(',') if target.strip()]
@@ -105,6 +107,10 @@ if __name__ == '__main__':
             n_samples = int(arg)
         elif i == 6:
             output_dir = arg
+        elif i == 7:
+            delta = float(arg)
+        elif i == 8:
+            epsilon = float(arg)
 
     if not target_aromas:
         raise ValueError("At least one target aroma must be provided.")
@@ -119,7 +125,7 @@ if __name__ == '__main__':
         dill.dump((gpr_model, reframed_to_gpr_rxns), f)
 
     with ProcessPoolExecutor(max_workers=WK_NO) as executor:
-        futures = [executor.submit(run_simulations, model_dump_file, env_id, evo_nutrients, wine_must, anaerobic, output_dir) for env_id, evo_nutrients in evo_envs]
+        futures = [executor.submit(run_simulations, model_dump_file, env_id, evo_nutrients, wine_must, anaerobic, output_dir, delta, epsilon) for env_id, evo_nutrients in evo_envs]
         for future in futures:
             future.result()
 

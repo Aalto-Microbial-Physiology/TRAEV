@@ -238,7 +238,7 @@ def plot_feature_mean_rs_ts(feature_df, title, output_dir, abbr=True):
             expand_points=(2.0, 2.5),
             expand_text=(2.0, 2.5),
             only_move={"points": "y", "text": "xy"},
-            lim=1500,
+            iter_lim=500,
         )
 
     plt.xlabel("Robustness Score")
